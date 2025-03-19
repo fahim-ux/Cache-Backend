@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import * as serviceAccount from '../../coderfolks-images-firebase-adminsdk-fs3b0-61abbfcf19.json';
 dotenv.config();
 
-console.log("Service :: ", serviceAccount);
+// console.log("Service :: ", serviceAccount);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
   storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
@@ -13,7 +13,7 @@ admin.initializeApp({
 export const db = admin.firestore();
 export const bucket = admin.storage().bucket();
 db.settings({ databaseId: 'cache-metadata' });
-console.log("Firebase Initialized: ", db);
+// console.log("Firebase Initialized: ", db);
 
 const testFirestoreConnection = async () => {
     try {

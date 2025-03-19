@@ -6,10 +6,15 @@ import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import multer from 'multer';
 import dotenv from 'dotenv';
+import apikeyRoutes from '@/routes/apiKeyRoutes';
+import { apiKeyAuth } from '@/middleware/apiKeyAuth';
+
+
+
 dotenv.config();
 
 const app = express();
-app.use(cors({ origin: ['http://localhost:3000'] }));
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -57,6 +62,24 @@ export const upload = multer({
     }
 });
 
+app.use('/api/keys', apikeyRoutes);
+app.get('/api/protected', apiKeyAuth, (req, res) => {
+    res.json({
+        success: true,
+        message: 'This is a protected route',
+        user: req.user.id,
+        apiKey: {
+            id: req.apiKey?.id,
+            name: req.apiKey?.name,
+            lastUsed: req.apiKey?.lastUsed
+        }
+    });
+});
+
+
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 
 
@@ -81,7 +104,7 @@ app.post('/upload', authenticateUser, upload.array('files'), async (req: Authent
         console.log("Uploaded Files:", uploadedFiles);
         console.log("User ID:", userId);
 
-        const uploadResults : UploadOutcome []= [];
+        const uploadResults: UploadOutcome[] = [];
 
         for (const file of uploadedFiles) {
             try {
@@ -117,7 +140,7 @@ app.post('/upload', authenticateUser, upload.array('files'), async (req: Authent
 
                             // Return secure URL
                             const secureUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
-                            resolve({ fileUid, secureUrl , originalName:originalname, success:true});
+                            resolve({ fileUid, secureUrl, originalName: originalname, success: true });
                         } catch (error) {
                             console.error("Metadata storage error:", error);
                             reject(error);
@@ -138,15 +161,15 @@ app.post('/upload', authenticateUser, upload.array('files'), async (req: Authent
                 });
             }
         }
-        
+
         const totalFiles = uploadResults.length;
         const successCount = uploadResults.filter(result => result.success).length;
-        res.status(200).json({ 
-            success: true, 
+        res.status(200).json({
+            success: true,
             summary: {
-                total : totalFiles,
-                successful : successCount,
-                failed : totalFiles - successCount
+                total: totalFiles,
+                successful: successCount,
+                failed: totalFiles - successCount
             },
             files: uploadResults,
         });
