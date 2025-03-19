@@ -1,5 +1,5 @@
-import { db } from '@/config/config';
-import { ApiKey } from '@/types/apiKey';
+import { db } from '../config/firebase';
+import { ApiKey } from '../types/apiKey';
 import crypto from 'crypto';
 
 const apiKeysCollection = db.collection('apiKeys');

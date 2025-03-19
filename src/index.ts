@@ -1,14 +1,12 @@
 import express from 'express';
-import { db, bucket } from './config/config';
+// import { db, bucket } from '@/config/firebase';
+import { db, bucket } from './config/firebase';
 import cors from 'cors';
-import * as admin from 'firebase-admin';
-import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import multer from 'multer';
 import dotenv from 'dotenv';
-import apikeyRoutes from '@/routes/apiKeyRoutes';
-import { apiKeyAuth } from '@/middleware/apiKeyAuth';
-
+import apikeyRoutes from './routes/apiKeyRoutes';
+import { apiKeyAuth } from './middleware/apiKeyAuth';
+import fileUploadRoutes from './routes/fileUploadRoutes';
+import fileDownloadRoutes from './routes/fileDownload';
 
 
 dotenv.config();
@@ -18,49 +16,6 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
-interface AuthenticatedRequest extends Request {
-    user?: admin.auth.DecodedIdToken;
-
-}
-interface UploadResult {
-    fileUid: string;
-    secureUrl: string;
-    originalName: string;
-    success: true;
-}
-
-interface UploadError {
-    originalName: string;
-    error: string;
-    success: false;
-}
-
-type UploadOutcome = UploadResult | UploadError;
-const authenticateUser = async (req: any, res: any, next: any) => {
-    console.log("Request Headers:", req.headers);
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res.status(401).json({ error: "Unauthorized: No token provided" });
-    }
-
-    const token = authHeader.split(" ")[1]; // Extract token from "Bearer <TOKEN>"
-    try {
-        const decodedToken = await admin.auth().verifyIdToken(token);
-        console.log("Decoded Token:", decodedToken);
-        req.user = decodedToken; // Attach user info to request
-        next();
-    } catch (error) {
-        return res.status(403).json({ error: "Unauthorized: Invalid token" });
-    }
-}
-
-export const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB limit
-    }
-});
 
 app.use('/api/keys', apikeyRoutes);
 app.get('/api/protected', apiKeyAuth, (req, res) => {
@@ -77,111 +32,115 @@ app.get('/api/protected', apiKeyAuth, (req, res) => {
 });
 
 
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 
 
-app.get('/', (req, res) => {
-    res.send(`Hello World ${db} : ${bucket.name}`);
+app.get('/api/bucketName', (req, res) => {
+    res.send(`This Api is using ${db.databaseId} : ${bucket.name}`);
 })
 
-app.post('/upload', authenticateUser, upload.array('files'), async (req: AuthenticatedRequest, res: Response) => {
-    try {
-        if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
-            res.status(400).json({ error: "No files uploaded" });
-            return;
-        }
+app.use('/api/upload', fileUploadRoutes);
+app.use('/api/download/file', fileDownloadRoutes);
 
-        const uploadedFiles = req.files as Express.Multer.File[];
-        const userId = req.user?.uid;
-        if (!userId) {
-            res.status(400).json({ error: "Missing userId" });
-            return;
-        }
+// app.post('/upload', authenticateUser, upload.array('files'), async (req: AuthenticatedRequest, res: Response) => {
+//     try {
+//         if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
+//             res.status(400).json({ error: "No files uploaded" });
+//             return;
+//         }
 
-        console.log("Uploaded Files:", uploadedFiles);
-        console.log("User ID:", userId);
+//         const uploadedFiles = req.files as Express.Multer.File[];
+//         const userId = req.user?.uid;
+//         if (!userId) {
+//             res.status(400).json({ error: "Missing userId" });
+//             return;
+//         }
 
-        const uploadResults: UploadOutcome[] = [];
+//         console.log("Uploaded Files:", uploadedFiles);
+//         console.log("User ID:", userId);
 
-        for (const file of uploadedFiles) {
-            try {
-                const { originalname, mimetype, buffer } = file;
-                const fileUid = uuidv4();
-                const filePath = `uploads/${userId}/${fileUid}_${originalname}`;
+//         const uploadResults: UploadOutcome[] = [];
 
-                // Upload file to Firebase Storage using write stream
-                const storagefile = bucket.file(filePath);
-                const writeStream = storagefile.createWriteStream({
-                    metadata: {
-                        contentType: mimetype,
-                    },
-                    resumable: false
-                });
+//         for (const file of uploadedFiles) {
+//             try {
+//                 const { originalname, mimetype, buffer } = file;
+//                 const fileUid = uuidv4();
+//                 const filePath = `uploads/${userId}/${fileUid}_${originalname}`;
 
-                // Process each file upload one at a time
-                const result = await new Promise<UploadResult>((resolve, reject) => {
-                    writeStream.on('error', (error) => {
-                        console.error("Upload stream error:", error);
-                        reject(error);
-                    });
+//                 // Upload file to Firebase Storage using write stream
+//                 const storagefile = bucket.file(filePath);
+//                 const writeStream = storagefile.createWriteStream({
+//                     metadata: {
+//                         contentType: mimetype,
+//                     },
+//                     resumable: false
+//                 });
 
-                    writeStream.on('finish', async () => {
-                        try {
-                            // Store metadata in Firestore
-                            await db.collection("uploads").doc(fileUid).set({
-                                filePath,
-                                contentType: mimetype,
-                                userId,
-                                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                            });
+//                 // Process each file upload one at a time
+//                 const result = await new Promise<UploadResult>((resolve, reject) => {
+//                     writeStream.on('error', (error) => {
+//                         console.error("Upload stream error:", error);
+//                         reject(error);
+//                     });
 
-                            // Return secure URL
-                            const secureUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
-                            resolve({ fileUid, secureUrl, originalName: originalname, success: true });
-                        } catch (error) {
-                            console.error("Metadata storage error:", error);
-                            reject(error);
-                        }
-                    });
+//                     writeStream.on('finish', async () => {
+//                         try {
+//                             // Store metadata in Firestore
+//                             await db.collection("uploads").doc(fileUid).set({
+//                                 filePath,
+//                                 contentType: mimetype,
+//                                 userId,
+//                                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
+//                             });
 
-                    // Write buffer to stream and end
-                    writeStream.end(buffer);
-                });
+//                             // Return secure URL
+//                             const secureUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
+//                             resolve({ fileUid, secureUrl, originalName: originalname, success: true });
+//                         } catch (error) {
+//                             console.error("Metadata storage error:", error);
+//                             reject(error);
+//                         }
+//                     });
 
-                uploadResults.push(result);
-            } catch (error) {
-                console.error(`Error uploading file ${file.originalname}:`, error);
-                uploadResults.push({
-                    originalName: file.originalname,
-                    error: error instanceof Error ? error.message : 'Unknown error',
-                    success: false
-                });
-            }
-        }
+//                     // Write buffer to stream and end
+//                     writeStream.end(buffer);
+//                 });
 
-        const totalFiles = uploadResults.length;
-        const successCount = uploadResults.filter(result => result.success).length;
-        res.status(200).json({
-            success: true,
-            summary: {
-                total: totalFiles,
-                successful: successCount,
-                failed: totalFiles - successCount
-            },
-            files: uploadResults,
-        });
-        return;
-    } catch (error) {
-        console.error("Upload Error:", error);
-        res.status(500).json({ error: "File upload failed" });
-        return;
-    }
+//                 uploadResults.push(result);
+//             } catch (error) {
+//                 console.error(`Error uploading file ${file.originalname}:`, error);
+//                 uploadResults.push({
+//                     originalName: file.originalname,
+//                     error: error instanceof Error ? error.message : 'Unknown error',
+//                     success: false
+//                 });
+//             }
+//         }
+
+//         const totalFiles = uploadResults.length;
+//         const successCount = uploadResults.filter(result => result.success).length;
+//         res.status(200).json({
+//             success: true,
+//             summary: {
+//                 total: totalFiles,
+//                 successful: successCount,
+//                 failed: totalFiles - successCount
+//             },
+//             files: uploadResults,
+//         });
+//         return;
+//     } catch (error) {
+//         console.error("Upload Error:", error);
+//         res.status(500).json({ error: "File upload failed" });
+//         return;
+//     }
 
 
-})
+// })
+
 
 const port = parseInt(process.env.PORT || '5000', 10);
 

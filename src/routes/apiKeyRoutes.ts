@@ -1,14 +1,15 @@
 import {Router} from 'express';
-import { authenticateUser } from '@/middleware/userAuth';
-import ApiKeyService from '@/service/ApiKeyService';
+import { authenticateUser } from '../middleware/userAuth';
+import ApiKeyService from '../service/ApiKeyService';
 
 const router = Router();
 
-// router.use(authenticateUser)
+router.use(authenticateUser)
 
 router.post('/', async (req, res) => {
     try{
         const {name , expiresInDays} = req.body;
+        console.log("Request to create a user api key with name: ",name);
         const userId = req.user.id;
         const apiKey = await ApiKeyService.generateApiKey(userId,name, expiresInDays? parseInt(expiresInDays): 0);
         res.status(201).json({
@@ -50,11 +51,14 @@ router.get('/', async (req, res) => {
         res.status(500).json({success:false,error: "Failed to list API keys"});
     }
 })
-router.put('/:id/revoke', async (req, res) => {
+router.put('/revoke/:id', async (req, res) => {
+    console.log("Request to revoke Api key");
     try{
         const {id} = req.params;
+        console.log("Request to revoke Api key with id: ",id);
         const userId = req.user.id;
-        const revoked = await ApiKeyService.revokeApiKey(userId, id);
+        console.log("Request to revoke Api key by userid: ",userId);
+        const revoked = await ApiKeyService.revokeApiKey(id,userId);
         if(!revoked){
             res.status(404).json({success:false,error: "API key not found or you do not have permission to revoke it"});
             return;

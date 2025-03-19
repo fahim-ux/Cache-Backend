@@ -3,10 +3,11 @@
       "module": "CommonJS",
       "resolveJsonModule": true,
       "esModuleInterop": true,
-      "baseUrl": "./",
+      "baseUrl": "./src",
       "paths": {
         "src/*": ["./src/*"],
-        "@/*": ["./src/*"]
+        "@/*": ["./*"],
+        // "@*": ["./node_modules/*"]
       }
     }
 }

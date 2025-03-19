@@ -1,5 +1,5 @@
-import { db } from '@/config/config';
-import { ApiKey } from '@/types/apiKey';
+import { db } from '../config/firebase';
+import { ApiKey } from '../types/apiKey';
 import crypto from 'crypto';
 
 const API_KEY_COLLECTION = 'apiKeys';
@@ -12,6 +12,10 @@ export class ApiKeyService {
         const expiresAt = expiresInDays > 0 
         ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000) 
         : null;
+
+        if(name){
+            console.log("Requested ApiK_key_Name: ", name);
+        }
 
         const apiKey:ApiKey = {
             id: doc.id,
@@ -66,6 +70,7 @@ export class ApiKeyService {
     async revokeApiKey(apiKeyId:string, userId:string):Promise<boolean>{
         const apiKey = await db.collection(API_KEY_COLLECTION).doc(apiKeyId).get();
         if(!apiKey.exists){
+            console.error("API key doesnot exist in DB");
             return false;
         }
         if(apiKey.data().userId !== userId){

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import apiKeyService from '@/service/ApiKeyService';
+import apiKeyService from '../service/ApiKeyService';
 
 export const apiKeyAuth = async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
     try {
