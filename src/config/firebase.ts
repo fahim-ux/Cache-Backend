@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin';
 import dotenv from 'dotenv';
-import * as serviceAccount from '../../coderfolks-images-firebase-adminsdk-fs3b0-61abbfcf19.json';
+import * as serviceAccount from '../../firebase-admin.json';
 dotenv.config();
 
 // console.log("Service :: ", serviceAccount);
