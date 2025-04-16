@@ -10,9 +10,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
-router.use(authenticateUser);
+// router.use(authenticateUser);
 router.use(upload.array('files'));
 router.post('/files',async (req: Request, res: Response) => {
+    console.log("File upload request received");
     try {
         if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
             res.status(400).json({ error: "No files uploaded" });
@@ -20,14 +21,15 @@ router.post('/files',async (req: Request, res: Response) => {
         }
 
         const uploadedFiles = req.files as Express.Multer.File[];
-        const userId = req.user?.id;
-        if (!userId) {
-            res.status(400).json({ error: "Missing userId" });
-            return;
-        }
+        // const userId = req.user?.id;
+        const userId = 'test-id-1';
+        // if (!userId) {
+        //     res.status(400).json({ error: "Missing userId" });
+        //     return;
+        // }
 
         console.log("Uploaded Files:", uploadedFiles);
-        console.log("User ID:", userId);
+        // console.log("User ID:", userId);
 
         const uploadResults: UploadOutcome[] = [];
 
@@ -61,11 +63,13 @@ router.post('/files',async (req: Request, res: Response) => {
                                 filePath,
                                 contentType: mimetype,
                                 userId,
+                                // 'test-d',
                                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                             });
 
                             // Return secure URL
-                            const secureUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
+                            // const secureUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media`;
+                            const secureUrl = `https://cache.coderfolks.me/asset/${encodeURIComponent(filePath)}`;
                             const UploadResult:UploadResult = { fileUid, secureUrl, originalName: originalname, success: true };
                             resolve(UploadResult);
                         } catch (error) {

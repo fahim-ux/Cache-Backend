@@ -7,6 +7,7 @@ import apikeyRoutes from './routes/apiKeyRoutes';
 import { apiKeyAuth } from './middleware/apiKeyAuth';
 import fileUploadRoutes from './routes/fileUploadRoutes';
 import fileDownloadRoutes from './routes/fileDownload';
+import fileDeleteRoutes from './routes/fileDeleteRoutes';
 
 
 dotenv.config();
@@ -19,6 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/keys', apikeyRoutes);
 app.get('/api/protected', apiKeyAuth, (req, res) => {
+    // console.log("Protected route accessed by user:");
     res.json({
         success: true,
         message: 'This is a protected route',
@@ -44,6 +46,7 @@ app.get('/api/bucketName', (req, res) => {
 
 app.use('/api/upload', fileUploadRoutes);
 app.use('/api/download/file', fileDownloadRoutes);
+app.use('/api/delete/file', fileDeleteRoutes);
 
 // app.post('/upload', authenticateUser, upload.array('files'), async (req: AuthenticatedRequest, res: Response) => {
 //     try {

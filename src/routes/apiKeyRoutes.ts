@@ -12,11 +12,17 @@ router.post('/', async (req, res) => {
         console.log("Request to create a user api key with name: ",name);
         const userId = req.user.id;
         const apiKey = await ApiKeyService.generateApiKey(userId,name, expiresInDays? parseInt(expiresInDays): 0);
-        res.status(201).json({
-            success: true,
-            message: 'API key generated successfully',
-            data: apiKey
-        });
+
+        const data = JSON.stringify(apiKey.key, null, 2);
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Deposition','attachment; filename=Cache_Api_Key.json')
+
+        // res.status(201).json({
+        //     success: true,
+        //     message: 'API key generated successfully',
+        //     data: apiKey
+        // });
+        res.status(200).send(data);
     }
     catch(err){
         console.log("Error genearting Api key", err);

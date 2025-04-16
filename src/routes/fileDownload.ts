@@ -4,7 +4,7 @@ import { Request,Response } from 'express';
 
 const router = Router();
 
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
     // const filepath = req.query.filePath;
     const {fileuid,filename} = req.query;
     console.log("File Name:", filename);
@@ -17,12 +17,22 @@ router.get('/', (req: Request, res: Response) => {
     // console.log("Queried File Path:", filePath);
 
     try{
+
+        const [metadata] = await bucket.file(filePath).getMetadata();
+        const size = metadata.size;
+        console.log("File Size:", size);
+        console.log("File Metadata:", metadata);
+
+
+
+
+
         const file = bucket.file(filePath);
-        // console.log("File:", file);
         const readStream = file.createReadStream();
 
-        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Type', metadata.contentType||'application/octect-stream');
         res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+        res.setHeader('Content-Length', size.toString());
         // res.setHeader('Content-Disposition', `inline; filename=${filename}`);
         // res.setHeader('Content-Disposition', `inline; filename=${filename.toString()}`);
         // res.setHeader('Content-Disposition', `inline; filename="CV.pdf"`);
